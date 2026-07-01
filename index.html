@@ -6,6 +6,7 @@
 <title>Weekly — a planner for student life</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
     --ink:#1B2A4A;
@@ -356,10 +357,119 @@
     color:#9a958a;
     text-align:center;
   }
+
+  /* === Auth gate === */
+  .auth-overlay{
+    position:fixed; inset:0; background:var(--paper);
+    background-image: repeating-linear-gradient(transparent, transparent 31px, var(--paper-line) 32px);
+    display:flex; align-items:center; justify-content:center;
+    z-index:300; padding:20px;
+  }
+  .auth-overlay[hidden]{ display:none; }
+  .auth-card{
+    background:var(--white);
+    border:1.5px solid var(--ink);
+    box-shadow:8px 8px 0 rgba(27,42,74,0.1);
+    max-width:400px; width:100%;
+    padding:34px 30px;
+  }
+  .auth-card .eyebrow{ margin-bottom:6px; }
+  .auth-card h1{
+    font-family:'Source Serif 4',serif; font-size:30px; color:var(--ink); margin:0 0 6px; line-height:1.05;
+  }
+  .auth-card .sub{ font-size:13.5px; margin-bottom:22px; max-width:none; }
+  .auth-tabs{ display:flex; border-bottom:1.5px solid var(--paper-line); margin-bottom:20px; }
+  .auth-tab{
+    flex:1; text-align:center; padding:9px 0 12px; background:none; border:none; cursor:pointer;
+    font-family:'JetBrains Mono',monospace; font-size:12px; text-transform:uppercase; letter-spacing:.06em;
+    color:#9a958a; border-bottom:3px solid transparent; margin-bottom:-1.5px;
+  }
+  .auth-tab.active{ color:var(--ink); border-bottom-color:var(--coral); }
+  .auth-field{ margin-bottom:14px; }
+  .auth-field label{
+    display:block; font-family:'JetBrains Mono',monospace; font-size:11px; text-transform:uppercase;
+    letter-spacing:.07em; color:var(--ink); margin-bottom:6px;
+  }
+  .auth-field input{
+    width:100%; font-family:'Inter',sans-serif; font-size:14px; padding:10px 11px;
+    border:1.5px solid #d8d2c4; background:#fffdf9; color:var(--graphite); border-radius:2px;
+  }
+  .auth-submit{
+    width:100%; padding:13px; margin-top:6px; background:var(--ink); color:var(--paper); border:none;
+    font-family:'Source Serif 4',serif; font-weight:600; font-size:16px; cursor:pointer;
+  }
+  .auth-submit[disabled]{ opacity:.6; cursor:default; }
+  .auth-submit:hover:not([disabled]){ background:#15203a; }
+  .auth-error{
+    font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--red-margin); margin-top:10px; min-height:14px;
+  }
+  .auth-fine{
+    font-family:'JetBrains Mono',monospace; font-size:10px; color:#9a958a; margin-top:18px; line-height:1.6; text-align:center;
+  }
+  .topbar{ display:flex; justify-content:flex-end; margin-bottom:-10px; }
+  .logout-btn{
+    font-family:'JetBrains Mono',monospace; font-size:11px; color:#8a8478;
+    background:none; border:1px solid #d8d2c4; padding:5px 10px; cursor:pointer;
+  }
+  .logout-btn:hover{ border-color:var(--coral); color:var(--coral); }
+
+  /* === Feedback === */
+  .feedback-section{ margin-top:50px; padding-top:30px; border-top:1.5px solid var(--ink); }
+  .feedback-section h3{ font-family:'Source Serif 4',serif; font-size:21px; color:var(--ink); margin:0 0 6px; }
+  .feedback-section .sub{ font-size:13.5px; margin-bottom:16px; }
+  .feedback-section textarea{
+    width:100%; min-height:90px; font-family:'Inter',sans-serif; font-size:14px; padding:11px;
+    border:1.5px solid #d8d2c4; background:#fffdf9; color:var(--graphite); border-radius:2px; resize:vertical;
+  }
+  .feedback-row{ display:flex; gap:10px; margin-top:10px; flex-wrap:wrap; }
+  .feedback-row input{
+    flex:1; min-width:200px; font-family:'Inter',sans-serif; font-size:14px; padding:10px 11px;
+    border:1.5px solid #d8d2c4; background:#fffdf9; color:var(--graphite); border-radius:2px;
+  }
+  .feedback-send{
+    padding:11px 22px; background:var(--coral); color:#fff; border:none;
+    font-family:'Source Serif 4',serif; font-weight:600; font-size:14px; cursor:pointer; white-space:nowrap;
+  }
+  .feedback-msg{ font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--sage); margin-top:10px; min-height:14px; }
 </style>
 </head>
 <body>
+
+  <div class="auth-overlay" id="authOverlay">
+    <div class="auth-card">
+      <div class="eyebrow">Weekly — term planner</div>
+      <h1 id="authHeading">Welcome back</h1>
+      <p class="sub" id="authSub">Log in to build your week.</p>
+
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="authTabLogin" type="button">Log in</button>
+        <button class="auth-tab" id="authTabSignup" type="button">Sign up</button>
+      </div>
+
+      <div class="auth-field" id="nameField" style="display:none;">
+        <label>Name</label>
+        <input type="text" id="authName" placeholder="Your name" autocomplete="name">
+      </div>
+      <div class="auth-field">
+        <label>Email</label>
+        <input type="email" id="authEmail" placeholder="you@university.edu" autocomplete="email">
+      </div>
+      <div class="auth-field">
+        <label>Password</label>
+        <input type="password" id="authPassword" placeholder="••••••••" autocomplete="current-password">
+      </div>
+
+      <button class="auth-submit" id="authSubmit" type="button">Log in</button>
+      <div class="auth-error" id="authError"></div>
+      <div class="auth-fine">Accounts are handled securely by Supabase Auth.</div>
+    </div>
+  </div>
+
 <div class="wrap">
+
+  <div class="topbar">
+    <button class="logout-btn" id="logoutBtn" type="button">Log out</button>
+  </div>
 
   <header class="hero">
     <div class="corner-mark">WK.01 — TERM PLANNER</div>
@@ -536,6 +646,17 @@
     </div>
   </div>
   <!-- /budgetView -->
+
+  <div class="feedback-section">
+    <h3>Got feedback?</h3>
+    <p class="sub">Tell us what's confusing, broken, or missing.</p>
+    <textarea id="feedbackText" placeholder="Your feedback..."></textarea>
+    <div class="feedback-row">
+      <input type="email" id="feedbackEmail" placeholder="Your email (optional, if you want a reply)">
+      <button class="feedback-send" id="feedbackSend" type="button">Send feedback</button>
+    </div>
+    <div class="feedback-msg" id="feedbackMsg"></div>
+  </div>
 
   <footer class="note">made for students who'd rather build the week than survive it — everything here is editable, nothing is final</footer>
 </div>
@@ -784,18 +905,33 @@ function setStatus(msg){
 }
 
 document.getElementById('saveBtn').onclick = async ()=>{
+  if(!currentUser){ setStatus('Log in first.'); return; }
+  setStatus('Saving…');
   try{
-    await window.storage.set('weekly-schedule', JSON.stringify({schedule, classDays:[...classDays]}), false);
-    setStatus('Saved to this browser session.');
-  }catch(err){ setStatus('Could not save.'); console.error(err); }
+    const { error } = await sb.from('planner_schedule').upsert({
+      user_id: currentUser.id,
+      data: { schedule, classDays:[...classDays] },
+      updated_at: new Date().toISOString()
+    });
+    if(error) throw error;
+    setStatus('Saved.');
+  }catch(err){ setStatus('Could not save: ' + err.message); console.error(err); }
 };
-document.getElementById('loadBtn').onclick = async ()=>{
+document.getElementById('loadBtn').onclick = loadScheduleFromSupabase;
+
+async function loadScheduleFromSupabase(){
+  if(!currentUser) return;
+  setStatus('Loading saved week…');
   try{
-    const res = await window.storage.get('weekly-schedule', false);
-    if(res && res.value){
-      const data = JSON.parse(res.value);
-      schedule = data.schedule || {};
-      classDays = new Set(data.classDays || []);
+    const { data, error } = await sb
+      .from('planner_schedule')
+      .select('data')
+      .eq('user_id', currentUser.id)
+      .maybeSingle();
+    if(error) throw error;
+    if(data && data.data && data.data.schedule){
+      schedule = data.data.schedule || {};
+      classDays = new Set(data.data.classDays || []);
       document.querySelectorAll('#dayChips .chip').forEach(c=>{
         c.classList.toggle('active', classDays.has(c.dataset.day));
       });
@@ -806,8 +942,8 @@ document.getElementById('loadBtn').onclick = async ()=>{
     } else {
       setStatus('Nothing saved yet.');
     }
-  }catch(err){ setStatus('No saved week found.'); }
-};
+  }catch(err){ setStatus('Could not load: ' + err.message); }
+}
 document.getElementById('resetBtn').onclick = ()=>{
   schedule = {};
   document.getElementById('weekGrid').style.display='none';
@@ -966,35 +1102,50 @@ function setBudgetStatus(msg){
 }
 
 document.getElementById('saveBudgetBtn').onclick = async ()=>{
+  if(!currentUser){ setBudgetStatus('Log in first.'); return; }
+  setBudgetStatus('Saving…');
   try{
-    const data = {
+    const payload = {
       income: readIncome(),
       expenses: readExpenses(),
       goalMode: document.getElementById('savingsGoalMode').value,
       goalAmt: document.getElementById('savingsGoalAmt').value
     };
-    await window.storage.set('student-budget', JSON.stringify(data), false);
-    setBudgetStatus('Saved to this browser session.');
-  }catch(err){ setBudgetStatus('Could not save.'); console.error(err); }
+    const { error } = await sb.from('planner_budget').upsert({
+      user_id: currentUser.id,
+      data: payload,
+      updated_at: new Date().toISOString()
+    });
+    if(error) throw error;
+    setBudgetStatus('Saved.');
+  }catch(err){ setBudgetStatus('Could not save: ' + err.message); console.error(err); }
 };
-document.getElementById('loadBudgetBtn').onclick = async ()=>{
+document.getElementById('loadBudgetBtn').onclick = loadBudgetFromSupabase;
+
+async function loadBudgetFromSupabase(){
+  if(!currentUser) return;
+  setBudgetStatus('Loading saved budget…');
   try{
-    const res = await window.storage.get('student-budget', false);
-    if(res && res.value){
-      const data = JSON.parse(res.value);
+    const { data, error } = await sb
+      .from('planner_budget')
+      .select('data')
+      .eq('user_id', currentUser.id)
+      .maybeSingle();
+    if(error) throw error;
+    if(data && data.data && (data.data.income || data.data.expenses)){
       incomeRowsEl.innerHTML = '';
       expenseRowsEl.innerHTML = '';
-      (data.income||[]).forEach(addIncomeRow);
-      (data.expenses||[]).forEach(addExpenseRow);
-      document.getElementById('savingsGoalMode').value = data.goalMode || 'amount';
-      document.getElementById('savingsGoalAmt').value = data.goalAmt || '';
+      (data.data.income||[]).forEach(addIncomeRow);
+      (data.data.expenses||[]).forEach(addExpenseRow);
+      document.getElementById('savingsGoalMode').value = data.data.goalMode || 'amount';
+      document.getElementById('savingsGoalAmt').value = data.data.goalAmt || '';
       calcBudget();
       setBudgetStatus('Loaded your saved budget.');
     } else {
       setBudgetStatus('Nothing saved yet.');
     }
-  }catch(err){ setBudgetStatus('No saved budget found.'); }
-};
+  }catch(err){ setBudgetStatus('Could not load: ' + err.message); }
+}
 document.getElementById('resetBudgetBtn').onclick = ()=>{
   incomeRowsEl.innerHTML = '';
   expenseRowsEl.innerHTML = '';
@@ -1003,18 +1154,20 @@ document.getElementById('resetBudgetBtn').onclick = ()=>{
   document.getElementById('budgetEmptyState').style.display='block';
   setBudgetStatus('Cleared.');
 };
+// ================= SUPABASE SETUP =================
+// Replace with your own project's values:
+// Supabase Dashboard -> your project -> Settings -> API
+//   "Project URL"       -> SUPABASE_URL
+//   "anon" "public" key -> SUPABASE_ANON_KEY
+// Never put the service_role key in frontend code — only the anon key.
+const SUPABASE_URL = 'https://qizmcgjpcunqcmvexaed.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFpem1jZ2pwY3VucWNtdmV4YWVkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4MDcwMTksImV4cCI6MjA5ODM4MzAxOX0.9HTrgfT4jqBuSHdKDvf6s4n0ngcZmq3g-gHMmHroCMY';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+
+let currentUser = null;
+
 // ================= AUTH GATE =================
-// PROTOTYPE-ONLY AUTH: stores hashed passwords in this app's shared key/value
-// storage so "sign up" persists across sessions for the demo. This is NOT a
-// substitute for a real authentication backend — before this touches real
-// student data, swap it for an actual provider (Supabase Auth, Auth0, Clerk,
-// Firebase Auth, etc.) that handles secure password storage, sessions, and
-// account recovery properly.
-async function sha256(text){
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
-  return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
-}
- 
 const authOverlay = document.getElementById('authOverlay');
 const authTabLogin = document.getElementById('authTabLogin');
 const authTabSignup = document.getElementById('authTabSignup');
@@ -1024,7 +1177,7 @@ const authSub = document.getElementById('authSub');
 const authSubmit = document.getElementById('authSubmit');
 const authError = document.getElementById('authError');
 let authMode = 'login';
- 
+
 function setAuthMode(mode){
   authMode = mode;
   authError.textContent = '';
@@ -1044,65 +1197,80 @@ function setAuthMode(mode){
 }
 authTabLogin.onclick = ()=> setAuthMode('login');
 authTabSignup.onclick = ()=> setAuthMode('signup');
- 
+
 authSubmit.onclick = async ()=>{
   const email = document.getElementById('authEmail').value.trim().toLowerCase();
   const password = document.getElementById('authPassword').value;
   const name = document.getElementById('authName').value.trim();
   authError.textContent = '';
- 
+
   if(!email || !password){ authError.textContent = 'Enter an email and password.'; return; }
- 
+  if(password.length < 6){ authError.textContent = 'Password must be at least 6 characters.'; return; }
+
+  authSubmit.disabled = true;
+  authSubmit.textContent = authMode === 'signup' ? 'Signing up…' : 'Logging in…';
+
   try{
     if(authMode === 'signup'){
-      const existing = await safeGet(`users:${email}`, true);
-      if(existing){ authError.textContent = 'An account already exists for that email — log in instead.'; return; }
-      const passHash = await sha256(password);
-      await window.storage.set(`users:${email}`, JSON.stringify({name, passHash}), true);
-      await window.storage.set('session', JSON.stringify({email, name}), false);
-      enterApp(name);
+      const { data, error } = await sb.auth.signUp({
+        email, password, options: { data: { name } }
+      });
+      if(error) throw error;
+      if(!data.session){
+        authError.style.color = 'var(--sage)';
+        authError.textContent = 'Check your email to confirm your account, then log in.';
+        setAuthMode('login');
+        authSubmit.disabled = false;
+        authSubmit.textContent = 'Log in';
+        return;
+      }
     } else {
-      const rec = await safeGet(`users:${email}`, true);
-      if(!rec){ authError.textContent = 'No account found for that email — try signing up.'; return; }
-      const data = JSON.parse(rec.value);
-      const passHash = await sha256(password);
-      if(passHash !== data.passHash){ authError.textContent = 'Incorrect password.'; return; }
-      await window.storage.set('session', JSON.stringify({email, name:data.name}), false);
-      enterApp(data.name);
+      const { error } = await sb.auth.signInWithPassword({ email, password });
+      if(error) throw error;
     }
+    // onAuthStateChange below hides the overlay and loads saved data.
   }catch(err){
-    authError.textContent = 'Something went wrong — try again.';
-    console.error(err);
+    authError.style.color = 'var(--red-margin)';
+    authError.textContent = err.message || 'Something went wrong — try again.';
+  }finally{
+    authSubmit.disabled = false;
+    authSubmit.textContent = authMode === 'signup' ? 'Sign up' : 'Log in';
   }
 };
- 
-async function safeGet(key, shared){
-  try{ return await window.storage.get(key, shared); }
-  catch(err){ return null; }
-}
- 
-function enterApp(name){
-  authOverlay.style.display = 'none';
-}
- 
+
 document.getElementById('logoutBtn').onclick = async ()=>{
-  try{ await window.storage.delete('session', false); }catch(err){}
-  authOverlay.style.display = 'flex';
-  setAuthMode('login');
-  document.getElementById('authEmail').value = '';
-  document.getElementById('authPassword').value = '';
+  await sb.auth.signOut();
 };
- 
-(async function checkSession(){
-  try{
-    const res = await safeGet('session', false);
-    if(res && res.value){
-      const data = JSON.parse(res.value);
-      enterApp(data.name);
-    }
-  }catch(err){ /* not logged in */ }
-})();
- 
+
+function enterApp(){
+  authOverlay.setAttribute('hidden', '');
+}
+function showAuthGate(){
+  authOverlay.removeAttribute('hidden');
+}
+
+sb.auth.onAuthStateChange((event, session)=>{
+  currentUser = session ? session.user : null;
+  if(currentUser){
+    enterApp();
+    loadScheduleFromSupabase();
+    loadBudgetFromSupabase();
+  } else {
+    showAuthGate();
+  }
+});
+
+sb.auth.getSession().then(({data})=>{
+  currentUser = data.session ? data.session.user : null;
+  if(currentUser){
+    enterApp();
+    loadScheduleFromSupabase();
+    loadBudgetFromSupabase();
+  } else {
+    showAuthGate();
+  }
+});
+
 // ================= FEEDBACK =================
 // Plain client-side HTML/JS can't send email on its own without exposing an
 // address or credentials in the page source. To deliver this quietly (no
